@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>番茄钟</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #1a1a2e;
+    color: #eee;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    overflow: hidden;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+    font-weight: 300;
+    letter-spacing: 4px;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 28px;
+    text-transform: uppercase;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 36px;
+  }
+  .tab {
+    padding: 8px 24px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    color: rgba(255,255,255,0.5);
+    transition: all 0.3s;
+    border: none;
+    background: none;
+  }
+  .tab.active {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+  }
+
+  .timer-ring {
+    position: relative;
+    width: 280px;
+    height: 280px;
+    margin-bottom: 36px;
+  }
+  .timer-ring svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+  .ring-bg {
+    fill: none;
+    stroke: rgba(255,255,255,0.06);
+    stroke-width: 6;
+  }
+  .ring-progress {
+    fill: none;
+    stroke-width: 6;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.5s ease, stroke 0.3s;
+  }
+  .ring-work { stroke: #e74c3c; }
+  .ring-break { stroke: #2ecc71; }
+
+  .timer-display {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .time {
+    font-size: 4rem;
+    font-weight: 200;
+    letter-spacing: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .mode-label {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.4);
+    margin-top: 4px;
+    letter-spacing: 2px;
+  }
+
+  .controls {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.05);
+    color: #fff;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .btn:hover {
+    background: rgba(255,255,255,0.12);
+    border-color: rgba(255,255,255,0.3);
+  }
+  .btn-primary {
+    width: 72px;
+    height: 72px;
+    border-color: #e74c3c;
+    background: rgba(231,76,60,0.15);
+  }
+  .btn-primary.break-mode {
+    border-color: #2ecc71;
+    background: rgba(46,204,113,0.15);
+  }
+  .btn-primary:hover {
+    background: rgba(231,76,60,0.3);
+  }
+  .btn-primary.break-mode:hover {
+    background: rgba(46,204,113,0.3);
+  }
+
+  .pomodoro-count {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: rgba(255,255,255,0.4);
+    font-size: 0.85rem;
+  }
+  .tomato-dots {
+    display: flex;
+    gap: 6px;
+  }
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    transition: background 0.3s;
+  }
+  .dot.done {
+    background: #e74c3c;
+    box-shadow: 0 0 8px rgba(231,76,60,0.4);
+  }
+</style>
+</head>
+<body>
+
+<h1>番茄钟</h1>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchMode('work')">专注</button>
+  <button class="tab" onclick="switchMode('break')">休息</button>
+</div>
+
+<div class="timer-ring">
+  <svg viewBox="0 0 280 280">
+    <circle class="ring-bg" cx="140" cy="140" r="130"/>
+    <circle class="ring-progress ring-work" id="progressRing" cx="140" cy="140" r="130"
+      stroke-dasharray="816.81" stroke-dashoffset="0"/>
+  </svg>
+  <div class="timer-display">
+    <div class="time" id="timeDisplay">25:00</div>
+    <div class="mode-label" id="modeLabel">专注中</div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="btn" onclick="reset()" title="重置">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M3 10a7 7 0 1 1 1.5 4.4"/>
+      <path d="M3 14V10h4"/>
+    </svg>
+  </button>
+  <button class="btn btn-primary" id="playBtn" onclick="toggle()" title="开始">
+    <svg width="24" height="24" fill="currentColor" id="playIcon">
+      <polygon points="6,3 20,12 6,21"/>
+    </svg>
+  </button>
+  <button class="btn" onclick="skip()" title="跳过">
+    <svg width="20" height="20" fill="currentColor">
+      <polygon points="4,3 14,10 4,17"/>
+      <polygon points="12,3 22,10 12,17"/>
+    </svg>
+  </button>
+</div>
+
+<div class="pomodoro-count">
+  <span>今日番茄</span>
+  <div class="tomato-dots" id="dots"></div>
+</div>
+
+<script>
+const WORK = 25 * 60;
+const BREAK = 5 * 60;
+const CIRCUMFERENCE = 2 * Math.PI * 130;
+
+let mode = 'work';       // 'work' | 'break'
+let totalSeconds = WORK;
+let remaining = WORK;
+let running = false;
+let interval = null;
+let pomodoroDone = 0;
+
+const ring = document.getElementById('progressRing');
+const timeDisplay = document.getElementById('timeDisplay');
+const modeLabel = document.getElementById('modeLabel');
+const playBtn = document.getElementById('playBtn');
+const playIcon = document.getElementById('playIcon');
+const dots = document.getElementById('dots');
+
+// Load today's count
+function loadCount() {
+  const key = 'pomodoro_' + new Date().toISOString().slice(0, 10);
+  pomodoroDone = parseInt(localStorage.getItem(key) || '0', 10);
+  renderDots();
+}
+function saveCount() {
+  const key = 'pomodoro_' + new Date().toISOString().slice(0, 10);
+  localStorage.setItem(key, pomodoroDone);
+}
+
+function renderDots() {
+  const target = Math.max(pomodoroDone, 4);
+  dots.innerHTML = '';
+  for (let i = 0; i < target; i++) {
+    const d = document.createElement('span');
+    d.className = 'dot' + (i < pomodoroDone ? ' done' : '');
+    dots.appendChild(d);
+  }
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  return String(m).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+}
+
+function updateRing() {
+  const fraction = remaining / totalSeconds;
+  ring.style.strokeDashoffset = CIRCUMFERENCE * (1 - fraction);
+}
+
+function render() {
+  timeDisplay.textContent = formatTime(remaining);
+  updateRing();
+}
+
+function toggle() {
+  if (running) pause();
+  else start();
+}
+
+function start() {
+  running = true;
+  playIcon.innerHTML = '<rect x="5" y="3" width="4" height="18"/><rect x="15" y="3" width="4" height="18"/>';
+  interval = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      remaining = 0;
+      render();
+      onComplete();
+      return;
+    }
+    render();
+  }, 1000);
+}
+
+function pause() {
+  running = false;
+  clearInterval(interval);
+  playIcon.innerHTML = '<polygon points="6,3 20,12 6,21"/>';
+}
+
+function reset() {
+  pause();
+  remaining = totalSeconds;
+  render();
+}
+
+function onComplete() {
+  pause();
+  notify();
+
+  if (mode === 'work') {
+    pomodoroDone++;
+    saveCount();
+    renderDots();
+    switchMode('break');
+  } else {
+    switchMode('work');
+  }
+}
+
+function switchMode(m) {
+  pause();
+  mode = m;
+  totalSeconds = m === 'work' ? WORK : BREAK;
+  remaining = totalSeconds;
+
+  // Update UI
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && m === 'work') || (i === 1 && m === 'break'));
+  });
+  ring.className = 'ring-progress ' + (m === 'work' ? 'ring-work' : 'ring-break');
+  playBtn.className = 'btn btn-primary' + (m === 'break' ? ' break-mode' : '');
+  modeLabel.textContent = m === 'work' ? '专注中' : '休息中';
+  playIcon.innerHTML = '<polygon points="6,3 20,12 6,21"/>';
+
+  render();
+}
+
+function skip() {
+  onComplete();
+}
+
+function notify() {
+  if (Notification.permission === 'granted') {
+    new Notification('番茄钟', {
+      body: mode === 'work' ? '专注结束，休息一下吧！' : '休息结束，继续加油！',
+      icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">&#127813;</text></svg>'
+    });
+  }
+}
+
+// Request notification permission
+if ('Notification' in window && Notification.permission === 'default') {
+  Notification.requestPermission();
+}
+
+loadCount();
+render();
+</script>
+</body>
+</html>
